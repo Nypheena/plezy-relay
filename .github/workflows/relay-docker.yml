@@ -1,17 +1,10 @@
 name: Build Relay Docker Image
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "server/**"
-      - ".github/workflows/relay-docker.yml"
-
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ghcr.io/Nypheena/plezy-relay
+  IMAGE_NAME: ghcr.io/YOUR_GITHUB_USERNAME/plezy-relay
 
 jobs:
   build:
