@@ -1,0 +1,19 @@
+name: Build and Push Plezy Relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plezy-relay/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  run-build:
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image_name: plezy-relay
+      context_path: ./plezy-relay

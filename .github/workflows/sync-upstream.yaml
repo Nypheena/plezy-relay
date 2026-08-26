@@ -1,0 +1,46 @@
+name: Sync Plezy Upstream
+
+on:
+  schedule:
+    - cron: '47 3 * * *' # Runs daily at 3:47 AM UTC (uneven time to avoid queue delays)
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Fetch Upstream Files
+        run: |
+          cd plezy-relay
+          curl -sL https://github.com/edde746/plezy/archive/refs/heads/main.tar.gz | tar -xz --strip-components=2 --exclude="*_test.go" --wildcards "plezy-main/server/*.go" "plezy-main/server/go.mod" "plezy-main/server/go.sum"
+          
+          # Maintain our custom target OS/ARCH flags in Dockerfile during sync
+          # We download the upstream one to temporary location first
+          curl -s https://raw.githubusercontent.com/edde746/plezy/main/server/Dockerfile > Dockerfile.temp
+          
+          # If target flags aren't in the downloaded file, insert them to preserve compilation correctness
+          if ! grep -q "ARG TARGETOS" Dockerfile.temp; then
+            sed -i '/FROM golang:.* AS build/a # Set by Docker Buildx automatically\nARG TARGETOS\nARG TARGETARCH' Dockerfile.temp
+            sed -i 's/go build -ldflags/GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags/g' Dockerfile.temp
+          fi
+          mv Dockerfile.temp Dockerfile
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): sync plezy-relay files with upstream"
+          title: "chore(deps): sync plezy-relay with upstream"
+          body: |
+            Automatically synchronized `plezy-relay` Go source files and Dockerfile with the upstream repository `edde746/plezy`.
+            
+            Merging this PR will trigger the multi-arch build and push workflow.
+          branch: sync-plezy-upstream
+          delete-branch: true
